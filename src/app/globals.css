@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+/* Manual (class-based) dark mode: the `.dark` class on <html> drives all
+   `dark:` variants. Set by the theme toggle and the no-flash script in layout. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  color-scheme: light;
+}
+
+/* LeanR brand tokens — sampled from the official logo asset
+   (public/brand/leanr-logo.png): pure-black background, electric-yellow
+   wordmark, white "By Fitelo" sub-brand. Yellow is the ONE accent color;
+   everything else is black/charcoal/white/gray, per brand guidance. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-brand: var(--font-rajdhani);
+
+  --color-leanr-yellow: #ffed00;
+  --color-leanr-yellow-hover: #e0d200;
+  --color-leanr-black: #000000;
+  --color-leanr-bg: #080808;
+  --color-leanr-card: #111111;
+  --color-leanr-card-hover: #181818;
+  --color-leanr-graphite: #1c1c1c;
+  --color-leanr-border: #292929;
+  --color-leanr-white: #ffffff;
+  --color-leanr-text-secondary: #a0a0a0;
+  --color-leanr-bg-light: #fafafa;
+  --color-leanr-card-light: #ffffff;
+  --color-leanr-border-light: #e5e5e5;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  color-scheme: dark; /* native form controls, date pickers & scrollbars follow */
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Winner-celebration animation (src/components/winner-celebration.tsx). Scoped
+   to this one component; only runs for the ~3s the overlay is mounted, then
+   the DOM node is removed — never a background/continuous animation. */
+
+@keyframes leanr-trophy-pop {
+  0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+  60% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+  80% { transform: scale(0.95) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.leanr-trophy-pop {
+  animation: leanr-trophy-pop 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes leanr-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.4); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+.leanr-sparkle {
+  animation: leanr-sparkle 1.6s ease-in-out infinite;
+  font-size: 1.1rem;
+}
+
+@keyframes leanr-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.leanr-fade-up {
+  animation: leanr-fade-up 0.6s ease-out both;
+}
+
+/* Confetti piece: --tx/--ty/--rot are per-particle CSS custom properties set
+   inline by the component. The 40% keyframe fakes a rise-then-fall arc. */
+@keyframes leanr-confetti-burst {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  40% {
+    transform: translate(calc(var(--tx) * 0.55), calc(var(--ty) * 0.55 - 18vh))
+      rotate(calc(var(--rot) * 0.5));
+    opacity: 1;
+  }
+  100% { transform: translate(var(--tx), var(--ty)) rotate(var(--rot)); opacity: 0; }
+}
+.leanr-confetti-piece {
+  border-radius: 1px;
+  animation-name: leanr-confetti-burst;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  animation-fill-mode: forwards;
+}
+
+/* Live news ticker (src/components/live-news-ticker.tsx). The track renders
+   its content twice back-to-back; scrolling exactly one copy-width (-50% of
+   the combined track) makes the loop seamless — no reset, no visible jump. */
+@keyframes leanr-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.leanr-ticker-track {
+  animation: leanr-ticker-scroll 20s linear infinite;
+  will-change: transform;
+}
+
+/* Slow pulsing glow on the ticker's own border, so it reads as an active
+   live broadcast strip rather than a static bar. */
+@keyframes leanr-ticker-glow {
+  0%, 100% { box-shadow: 0 0 14px -4px rgba(255, 237, 0, 0.35); }
+  50% { box-shadow: 0 0 26px -2px rgba(255, 237, 0, 0.65); }
+}
+.leanr-ticker-glow {
+  animation: leanr-ticker-glow 3s ease-in-out infinite;
+}
