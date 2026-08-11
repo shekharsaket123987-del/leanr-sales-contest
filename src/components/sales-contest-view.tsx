@@ -75,11 +75,11 @@ function StillInRace({ label, items }: { label: string; items: { name: string; n
   return (
     <div className="mt-4 border-t border-leanr-border-light pt-3 dark:border-leanr-border">
       <div className="mb-2 text-xs font-bold uppercase tracking-wide text-leanr-yellow">🚀 Still in the race</div>
-      <ul className="space-y-1.5">
+      <ul className="space-y-2">
         {items.map((r) => (
-          <li key={r.name} className="flex items-center justify-between gap-2 text-xs">
-            <span className="truncate font-medium text-zinc-700 dark:text-zinc-300">{r.name}</span>
-            <span className="shrink-0 font-semibold text-leanr-yellow">{r.needLabel}</span>
+          <li key={r.name} className="text-xs">
+            <div className="font-semibold text-zinc-800 dark:text-zinc-100">{r.name}</div>
+            <div className="mt-0.5 font-semibold text-leanr-yellow">{r.needLabel}</div>
           </li>
         ))}
       </ul>
