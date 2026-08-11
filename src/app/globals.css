@@ -118,3 +118,13 @@ body {
 .leanr-ticker-glow {
   animation: leanr-ticker-glow 3s ease-in-out infinite;
 }
+
+/* Race-reveal rocket (src/components/race-reveal.tsx) — a bounce/pulse, not
+   a trophy-pop, since nobody has actually won yet. */
+@keyframes leanr-race-pulse {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.08); }
+}
+.leanr-race-pulse {
+  animation: leanr-race-pulse 1.4s ease-in-out infinite;
+}

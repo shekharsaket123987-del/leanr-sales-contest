@@ -7,7 +7,11 @@ export const dynamic = 'force-dynamic'
 
 export default async function SalesContestPage() {
   const data = await getSalesContestData()
-  const empty = !data.coaches.length && !data.teams.length
+  // Only the true "nothing anywhere" case falls back to the placeholder —
+  // SalesContestView itself handles "nobody's qualified yet" via the race
+  // system, so race-only data should still render the full page.
+  const empty =
+    !data.coaches.length && !data.teams.length && !data.raceCoaches.length && !data.raceTeams.length
 
   return (
     <div className="min-h-screen">
