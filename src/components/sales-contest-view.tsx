@@ -191,7 +191,13 @@ function CoachTable({ rows, incentiveOf }: { rows: ContestCoachRow[]; incentiveO
                   {incentive > 0 ? (
                     <span className="text-leanr-yellow">{formatINR(incentive)}</span>
                   ) : (
-                    <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                    // Every row here comes from the "Top Coaches" tab, which by
+                    // its own sheet formula only ever lists people who've
+                    // already crossed BOTH thresholds — so a non-Top-3 row
+                    // isn't "no data", it's "qualified, just not in the money".
+                    <span className="whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      ✅ Eligibility Crossed
+                    </span>
                   )}
                 </td>
               </tr>
@@ -212,7 +218,8 @@ function TeamTable({ rows }: { rows: ContestTeamRow[] }) {
             <th className="py-2 pr-4 font-medium">Rank</th>
             <th className="py-2 pr-4 font-medium">Team</th>
             <th className="py-2 pr-4 text-right font-medium">Plans Sold</th>
-            <th className="py-2 text-right font-medium">Amount</th>
+            <th className="py-2 pr-4 text-right font-medium">Amount</th>
+            <th className="py-2 text-right font-medium">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -223,8 +230,16 @@ function TeamTable({ rows }: { rows: ContestTeamRow[] }) {
               </td>
               <td className="py-2 pr-4 font-medium text-zinc-900 dark:text-white">{r.team}</td>
               <td className="py-2 pr-4 text-right tabular-nums">{r.plansSold.toLocaleString('en-IN')}</td>
-              <td className="py-2 text-right font-semibold tabular-nums text-zinc-900 dark:text-white">
+              <td className="py-2 pr-4 text-right font-semibold tabular-nums text-zinc-900 dark:text-white">
                 {formatINR(r.amount)}
+              </td>
+              <td className="py-2 text-right">
+                {/* Every row here comes from the "Top Leader" tab — already
+                    fully qualified by definition. No incentive/revenue shown
+                    for leaders (recognition only), just the status. */}
+                <span className="whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  ✅ Eligibility Crossed
+                </span>
               </td>
             </tr>
           ))}
