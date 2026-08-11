@@ -159,7 +159,42 @@ function RankCell({ rank }: { rank: number | null }) {
   return <span className="font-semibold text-zinc-500 dark:text-leanr-text-secondary">#{rank}</span>
 }
 
-function CoachTable({ rows, incentiveOf }: { rows: ContestCoachRow[]; incentiveOf: (r: ContestCoachRow) => number }) {
+// "Overall Performance" is every coach/team with any sales this week —
+// merging the already-qualified (Top Coaches / Top Leader tabs) with the
+// still-racing (Raw-Coach / Raw-Leader tabs) into one table, qualified rows
+// first. Nobody with sales activity is left out just because they haven't
+// crossed the eligibility bar yet.
+type OverallCoachEntry =
+  | { kind: 'qualified'; coach: string; team: string; plansSold: number; amount: number; rank: number | null; incentive: number }
+  | { kind: 'race'; coach: string; team: string; plansSold: number; amount: number; needLabel: string }
+
+function buildOverallCoaches(
+  qualified: ContestCoachRow[],
+  incentiveOf: (r: ContestCoachRow) => number,
+  race: RaceCoach[],
+): OverallCoachEntry[] {
+  return [
+    ...qualified.map((c) => ({
+      kind: 'qualified' as const,
+      coach: c.coach,
+      team: c.team,
+      plansSold: c.plansSold,
+      amount: c.amount,
+      rank: c.rank,
+      incentive: incentiveOf(c),
+    })),
+    ...race.map((r) => ({
+      kind: 'race' as const,
+      coach: r.coach,
+      team: r.team,
+      plansSold: r.plansSold,
+      amount: r.amount,
+      needLabel: r.status.needLabel,
+    })),
+  ]
+}
+
+function OverallCoachTable({ rows }: { rows: OverallCoachEntry[] }) {
   return (
     <div className="max-h-[560px] overflow-auto">
       <table className="w-full text-sm">
@@ -170,46 +205,58 @@ function CoachTable({ rows, incentiveOf }: { rows: ContestCoachRow[]; incentiveO
             <th className="py-2 pr-4 font-medium">Team</th>
             <th className="py-2 pr-4 text-right font-medium">Plans Sold</th>
             <th className="py-2 pr-4 text-right font-medium">Amount</th>
-            <th className="py-2 text-right font-medium">Incentive</th>
+            <th className="py-2 text-right font-medium">Status</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => {
-            const incentive = incentiveOf(r)
-            return (
-              <tr key={`${r.coach}-${i}`} className="border-b border-zinc-100 dark:border-leanr-border">
-                <td className="py-2 pr-4">
+          {rows.map((r, i) => (
+            <tr key={`${r.coach}-${i}`} className="border-b border-zinc-100 dark:border-leanr-border">
+              <td className="py-2 pr-4">
+                {r.kind === 'qualified' ? (
                   <RankCell rank={r.rank} />
-                </td>
-                <td className="py-2 pr-4 font-medium text-zinc-900 dark:text-white">{r.coach}</td>
-                <td className="py-2 pr-4 text-zinc-600 dark:text-leanr-text-secondary">{r.team || '—'}</td>
-                <td className="py-2 pr-4 text-right tabular-nums">{r.plansSold.toLocaleString('en-IN')}</td>
-                <td className="py-2 pr-4 text-right font-semibold tabular-nums text-zinc-900 dark:text-white">
-                  {formatINR(r.amount)}
-                </td>
-                <td className="py-2 text-right font-semibold tabular-nums">
-                  {incentive > 0 ? (
-                    <span className="text-leanr-yellow">{formatINR(incentive)}</span>
-                  ) : (
-                    // Every row here comes from the "Top Coaches" tab, which by
-                    // its own sheet formula only ever lists people who've
-                    // already crossed BOTH thresholds — so a non-Top-3 row
-                    // isn't "no data", it's "qualified, just not in the money".
-                    <span className="whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      ✅ Eligibility Crossed
-                    </span>
-                  )}
-                </td>
-              </tr>
-            )
-          })}
+                ) : (
+                  <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                )}
+              </td>
+              <td className="py-2 pr-4 font-medium text-zinc-900 dark:text-white">{r.coach}</td>
+              <td className="py-2 pr-4 text-zinc-600 dark:text-leanr-text-secondary">{r.team || '—'}</td>
+              <td className="py-2 pr-4 text-right tabular-nums">{r.plansSold.toLocaleString('en-IN')}</td>
+              <td className="py-2 pr-4 text-right font-semibold tabular-nums text-zinc-900 dark:text-white">
+                {formatINR(r.amount)}
+              </td>
+              <td className="py-2 text-right font-semibold">
+                {r.kind === 'race' ? (
+                  <span className="whitespace-nowrap text-leanr-yellow">{r.needLabel}</span>
+                ) : r.incentive > 0 ? (
+                  <span className="tabular-nums text-leanr-yellow">{formatINR(r.incentive)}</span>
+                ) : (
+                  // Qualified (Top Coaches tab = both thresholds already met)
+                  // but not Top-3 — "no incentive" isn't "no data".
+                  <span className="whitespace-nowrap text-xs text-emerald-600 dark:text-emerald-400">
+                    ✅ Eligibility Crossed
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
   )
 }
 
-function TeamTable({ rows }: { rows: ContestTeamRow[] }) {
+type OverallTeamEntry =
+  | { kind: 'qualified'; team: string; plansSold: number; amount: number; rank: number | null }
+  | { kind: 'race'; team: string; plansSold: number; amount: number; needLabel: string }
+
+function buildOverallTeams(qualified: ContestTeamRow[], race: RaceTeam[]): OverallTeamEntry[] {
+  return [
+    ...qualified.map((t) => ({ kind: 'qualified' as const, team: t.team, plansSold: t.plansSold, amount: t.amount, rank: t.rank })),
+    ...race.map((t) => ({ kind: 'race' as const, team: t.team, plansSold: t.plansSold, amount: t.amount, needLabel: t.status.needLabel })),
+  ]
+}
+
+function OverallTeamTable({ rows }: { rows: OverallTeamEntry[] }) {
   return (
     <div className="max-h-[560px] overflow-auto">
       <table className="w-full text-sm">
@@ -226,7 +273,11 @@ function TeamTable({ rows }: { rows: ContestTeamRow[] }) {
           {rows.map((r, i) => (
             <tr key={`${r.team}-${i}`} className="border-b border-zinc-100 dark:border-leanr-border">
               <td className="py-2 pr-4">
-                <RankCell rank={r.rank} />
+                {r.kind === 'qualified' ? (
+                  <RankCell rank={r.rank} />
+                ) : (
+                  <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                )}
               </td>
               <td className="py-2 pr-4 font-medium text-zinc-900 dark:text-white">{r.team}</td>
               <td className="py-2 pr-4 text-right tabular-nums">{r.plansSold.toLocaleString('en-IN')}</td>
@@ -234,77 +285,16 @@ function TeamTable({ rows }: { rows: ContestTeamRow[] }) {
                 {formatINR(r.amount)}
               </td>
               <td className="py-2 text-right">
-                {/* Every row here comes from the "Top Leader" tab — already
-                    fully qualified by definition. No incentive/revenue shown
-                    for leaders (recognition only), just the status. */}
-                <span className="whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  ✅ Eligibility Crossed
-                </span>
+                {/* No incentive/revenue for leaders (recognition only) — just
+                    eligibility status, per the leader display rule. */}
+                {r.kind === 'race' ? (
+                  <span className="whitespace-nowrap text-xs font-semibold text-leanr-yellow">{r.needLabel}</span>
+                ) : (
+                  <span className="whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    ✅ Eligibility Crossed
+                  </span>
+                )}
               </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-// Fallback full-roster table shown instead of the (qualified-only) coach/team
-// tables when nobody has qualified yet — "Rank" becomes progress-toward-
-// qualification instead of a leaderboard position, so the table is never
-// empty this early in the week.
-function RaceCoachTable({ rows }: { rows: RaceCoach[] }) {
-  return (
-    <div className="max-h-[560px] overflow-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-leanr-border-light text-left text-zinc-500 dark:border-leanr-border dark:text-leanr-text-secondary">
-            <th className="py-2 pr-4 font-medium">Coach / Dietitian</th>
-            <th className="py-2 pr-4 font-medium">Team</th>
-            <th className="py-2 pr-4 text-right font-medium">Plans</th>
-            <th className="py-2 pr-4 text-right font-medium">Sales</th>
-            <th className="py-2 text-right font-medium">Still Needed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${r.coach}-${i}`} className="border-b border-zinc-100 dark:border-leanr-border">
-              <td className="py-2 pr-4 font-medium text-zinc-900 dark:text-white">{r.coach}</td>
-              <td className="py-2 pr-4 text-zinc-600 dark:text-leanr-text-secondary">{r.team || '—'}</td>
-              <td className="py-2 pr-4 text-right tabular-nums">
-                {r.plansSold}/{INDIVIDUAL_QUALIFICATION.minPayments}
-              </td>
-              <td className="py-2 pr-4 text-right tabular-nums">{formatINR(r.amount)}</td>
-              <td className="py-2 text-right font-semibold text-leanr-yellow">{r.status.needLabel}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function RaceTeamTable({ rows }: { rows: RaceTeam[] }) {
-  return (
-    <div className="max-h-[560px] overflow-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-leanr-border-light text-left text-zinc-500 dark:border-leanr-border dark:text-leanr-text-secondary">
-            <th className="py-2 pr-4 font-medium">Team</th>
-            <th className="py-2 pr-4 text-right font-medium">Plans</th>
-            <th className="py-2 pr-4 text-right font-medium">Sales</th>
-            <th className="py-2 text-right font-medium">Still Needed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${r.team}-${i}`} className="border-b border-zinc-100 dark:border-leanr-border">
-              <td className="py-2 pr-4 font-medium text-zinc-900 dark:text-white">{r.team}</td>
-              <td className="py-2 pr-4 text-right tabular-nums">
-                {r.plansSold}/{LEADER_QUALIFICATION.minPayments}
-              </td>
-              <td className="py-2 pr-4 text-right tabular-nums">{formatINR(r.amount)}</td>
-              <td className="py-2 text-right font-semibold text-leanr-yellow">{r.status.needLabel}</td>
             </tr>
           ))}
         </tbody>
@@ -365,21 +355,23 @@ export default function SalesContestView({ data }: { data: SalesContestData }) {
     return () => clearTimeout(t)
   }, [phase, qualifiedCoaches.length, qualifiedTeams.length, raceCoaches.length, raceTeams.length])
 
-  const filteredCoaches = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return data.coaches
-    return data.coaches.filter(
-      (r) => r.coach.toLowerCase().includes(q) || r.team.toLowerCase().includes(q),
-    )
-  }, [data.coaches, search])
+  // "Overall Performance" merges everyone with sales activity this week —
+  // already-qualified (Top Coaches/Top Leader) plus still-racing (Raw-Coach/
+  // Raw-Leader) — so nobody drops off the full table just for not having
+  // crossed the eligibility bar yet.
+  const overallCoaches = useMemo(
+    () => buildOverallCoaches(data.coaches, incentiveOf, raceCoaches),
+    [data.coaches, incentiveOf, raceCoaches],
+  )
+  const overallTeams = useMemo(() => buildOverallTeams(data.teams, raceTeams), [data.teams, raceTeams])
 
-  const filteredRaceCoaches = useMemo(() => {
+  const filteredOverallCoaches = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return raceCoaches
-    return raceCoaches.filter(
+    if (!q) return overallCoaches
+    return overallCoaches.filter(
       (r) => r.coach.toLowerCase().includes(q) || r.team.toLowerCase().includes(q),
     )
-  }, [raceCoaches, search])
+  }, [overallCoaches, search])
 
   return (
     <>
@@ -558,18 +550,16 @@ export default function SalesContestView({ data }: { data: SalesContestData }) {
         </section>
       </div>
 
-      {/* Full ranked table — all coaches or all teams. Falls back to the race
-          view (progress instead of rank) when nobody's qualified yet. */}
+      {/* Full roster — every coach/team with sales this week, qualified
+          (Top Coaches/Top Leader) and still-racing (Raw-Coach/Raw-Leader)
+          together. Nobody drops off just for not having qualified yet. */}
       <section className="mt-4 rounded-xl border border-leanr-border-light bg-white p-4 dark:border-leanr-border dark:bg-leanr-card">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-brand text-sm font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
-            {table === 'coach' && data.coaches.length === 0 && filteredRaceCoaches.length > 0 ? (
-              <>🚀 Race to Qualification <span className="font-normal normal-case text-zinc-400 dark:text-leanr-text-secondary">— all coaches &amp; dietitians</span></>
-            ) : table === 'team' && data.teams.length === 0 && raceTeams.length > 0 ? (
-              <>🏆 Race to Leadership <span className="font-normal normal-case text-zinc-400 dark:text-leanr-text-secondary">— all teams</span></>
-            ) : (
-              <>Overall Performance <span className="font-normal normal-case text-zinc-400 dark:text-leanr-text-secondary">— all coaches &amp; dietitians</span></>
-            )}
+            Overall Performance{' '}
+            <span className="font-normal normal-case text-zinc-400 dark:text-leanr-text-secondary">
+              — {table === 'coach' ? 'all coaches & dietitians' : 'all teams'}
+            </span>
           </h2>
           <div className="flex items-center gap-2">
             {(['coach', 'team'] as const).map((k) => {
@@ -605,17 +595,13 @@ export default function SalesContestView({ data }: { data: SalesContestData }) {
         )}
 
         {table === 'coach' ? (
-          filteredCoaches.length > 0 ? (
-            <CoachTable rows={filteredCoaches} incentiveOf={incentiveOf} />
-          ) : filteredRaceCoaches.length > 0 ? (
-            <RaceCoachTable rows={filteredRaceCoaches} />
+          filteredOverallCoaches.length > 0 ? (
+            <OverallCoachTable rows={filteredOverallCoaches} />
           ) : (
             <p className="py-6 text-center text-sm text-zinc-400 dark:text-leanr-text-secondary">No coaches found.</p>
           )
-        ) : data.teams.length > 0 ? (
-          <TeamTable rows={data.teams} />
-        ) : raceTeams.length > 0 ? (
-          <RaceTeamTable rows={raceTeams} />
+        ) : overallTeams.length > 0 ? (
+          <OverallTeamTable rows={overallTeams} />
         ) : (
           <p className="py-6 text-center text-sm text-zinc-400 dark:text-leanr-text-secondary">No teams found.</p>
         )}
