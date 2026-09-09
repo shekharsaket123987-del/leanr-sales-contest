@@ -1,20 +1,19 @@
-// Parser + types for the "10th–16th August" sales-contest spreadsheet — a
+// Parser + types for the "8th–14th September" sales-contest spreadsheet — a
 // separate sheet (SHEET_CONTEST_ID) from the main LeanR sheet, dedicated to a
-// week-long coach/dietitian sales contest. Five tabs are read live:
+// week-long coach/dietitian sales contest. Individual basis only — every
+// coach/dietitian competes on their own, there is no team/leader leaderboard.
+// Three tabs are read live:
 //
 //   'Top Coaches' — one row per already-qualified coach/dietitian, ranked.
 //     A Team | B Coach/Dietitian | C Plan Sold | D Payment Amount | ... | I Rank
 //
-//   'Top Leader' — one row per already-qualified team, ranked.
-//     A Team | B Total Plan Sold | C Plan Amount | ... | F Rank
-//
 //   'Total Revenue' — single summary row (A2 revenue, B2 plan count), the
-//     canonical totals for the KPI cards (independent of the leaderboards
-//     above, which only list ranked/non-zero rows).
+//     canonical totals for the KPI cards (independent of the leaderboard
+//     above, which only lists ranked/non-zero rows).
 //
-//   'Raw-Coach' / 'Raw-Leader' — coaches/teams who have NOT yet cleared both
-//     qualification thresholds, for the "race to qualification" views (see
-//     below). Columns documented next to their parsers further down.
+//   'Raw-Coach' — coaches/dietitians who have NOT yet cleared both
+//     qualification thresholds, for the "race to qualification" view (see
+//     below). Columns documented next to its parser further down.
 //
 // All are formula-driven off a raw sales log in the same spreadsheet, so they
 // update live as sales are entered during the contest — we just re-read them
@@ -23,18 +22,11 @@
 import type { CellValue } from '@/lib/google/sheets'
 
 export const CONTEST_SPREADSHEET_ID = process.env.SHEET_CONTEST_ID ?? ''
-export const CONTEST_LABEL = '10–16 August'
+export const CONTEST_LABEL = '8–14 September'
 
 export type ContestCoachRow = {
   team: string
   coach: string // 'Name ECODE' as entered on the sheet (code kept visible)
-  plansSold: number
-  amount: number
-  rank: number | null
-}
-
-export type ContestTeamRow = {
-  team: string
   plansSold: number
   amount: number
   rank: number | null
@@ -72,23 +64,6 @@ export function parseContestCoachSheet(values: CellValue[][]): ContestCoachRow[]
   return out.sort(byRankThenAmount)
 }
 
-// 'Top Leader' tab (row 0 = header). Rows without a team name are dropped.
-export function parseContestTeamSheet(values: CellValue[][]): ContestTeamRow[] {
-  const out: ContestTeamRow[] = []
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i] ?? []
-    const team = String(row[0] ?? '').trim()
-    if (!team) continue
-    out.push({
-      team,
-      plansSold: num(row[1]),
-      amount: num(row[2]),
-      rank: rankOf(row[5]),
-    })
-  }
-  return out.sort(byRankThenAmount)
-}
-
 // Top N entries with real sales (drops zero-amount rows so a leaderboard of
 // all-zero placeholders doesn't render as a fake podium).
 export function topEntries<T extends { amount: number }>(rows: T[], n = 3): T[] {
@@ -105,18 +80,10 @@ export function parseContestSummarySheet(values: CellValue[][]): ContestSummary 
 }
 
 // ---------- Weekly-drive qualification & incentives ----------
-// Business rules given directly by Fitelo (not derived from the sheet). Two
-// separate tiers — individual (coach/dietitian) and leader (team) — each with
-// its own qualification bar and payout.
-//
-// NOTE on "payments": the contest sheet only gives us a plan-sold COUNT per
-// coach/team, not a separate transaction count, so plansSold stands in for
-// payments here. If Fitelo tracks payments as a number distinct from plans
-// sold, point this at that column instead.
+// Business rules given directly by Fitelo (not derived from the sheet).
+// Individual (coach/dietitian) basis only.
 export const INDIVIDUAL_QUALIFICATION = { minPayments: 2, minSales: 25_000 }
-export const LEADER_QUALIFICATION = { minPayments: 6, minSales: 60_000 }
-export const INDIVIDUAL_INCENTIVES = [2000, 1500, 1000] // 1st, 2nd, 3rd
-export const LEADER_INCENTIVE = 2000
+export const INDIVIDUAL_INCENTIVES = [3000, 2500, 2000] // 1st, 2nd, 3rd
 
 function qualifies(
   r: { plansSold: number; amount: number },
@@ -136,24 +103,6 @@ export function qualifiedTopCoaches(rows: ContestCoachRow[], n = 3): QualifiedCo
     .map((r, i) => ({ ...r, incentive: INDIVIDUAL_INCENTIVES[i] ?? 0 }))
 }
 
-export type QualifiedTeam = ContestTeamRow & { incentive: number }
-
-// Top N qualified teams for the "Top Performing Leaders" recognition display
-// — only the #1 (index 0) actually carries the flat incentive; 2nd/3rd are
-// shown for recognition only (the leader drive pays one winner, not a tier).
-export function qualifiedTopTeams(rows: ContestTeamRow[], n = 3): QualifiedTeam[] {
-  return rows
-    .filter((r) => qualifies(r, LEADER_QUALIFICATION))
-    .slice(0, n)
-    .map((r, i) => ({ ...r, incentive: i === 0 ? LEADER_INCENTIVE : 0 }))
-}
-
-// The single qualified top team — the leader drive pays one flat incentive,
-// not a 1st/2nd/3rd tier.
-export function qualifiedTopTeam(rows: ContestTeamRow[]): QualifiedTeam | undefined {
-  return qualifiedTopTeams(rows, 1)[0]
-}
-
 // Per-row incentive for the "Overall Performance" table — 0 unless this coach
 // is a qualified top-3 individual.
 export function incentiveFor(coach: ContestCoachRow, qualified: QualifiedCoach[]): number {
@@ -161,18 +110,16 @@ export function incentiveFor(coach: ContestCoachRow, qualified: QualifiedCoach[]
 }
 
 // ---------- Race to qualification ----------
-// 'Raw-Coach' / 'Raw-Leader' tabs list people/teams who have NOT yet cleared
-// BOTH thresholds (the sheet's own QUERY filters on "below both"). We only
-// read the raw plan/sales numbers from these tabs and compute progress/need
+// 'Raw-Coach' tab lists coaches/dietitians who have NOT yet cleared BOTH
+// thresholds (the sheet's own QUERY filters on "below both"). We only read
+// the raw plan/sales numbers from this tab and compute progress/need
 // ourselves — more robust than trusting the sheet's own precomputed "need"
 // columns, and it means the math here is guaranteed consistent with the
-// qualification bars above.
+// qualification bar above.
 //
 //   'Raw-Coach': A Team | B Coach/Dietitian | C Plan Sold | D Payment Amount
-//   'Raw-Leader': A Team | B Plan Sold | C Payment Amount
 
 export type RaceCoachRow = { team: string; coach: string; plansSold: number; amount: number }
-export type RaceTeamRow = { team: string; plansSold: number; amount: number }
 
 export function parseRaceCoachSheet(values: CellValue[][]): RaceCoachRow[] {
   const out: RaceCoachRow[] = []
@@ -181,17 +128,6 @@ export function parseRaceCoachSheet(values: CellValue[][]): RaceCoachRow[] {
     const coach = String(row[1] ?? '').trim()
     if (!coach) continue
     out.push({ team: String(row[0] ?? '').trim(), coach, plansSold: num(row[2]), amount: num(row[3]) })
-  }
-  return out
-}
-
-export function parseRaceTeamSheet(values: CellValue[][]): RaceTeamRow[] {
-  const out: RaceTeamRow[] = []
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i] ?? []
-    const team = String(row[0] ?? '').trim()
-    if (!team) continue
-    out.push({ team, plansSold: num(row[1]), amount: num(row[2]) })
   }
   return out
 }
@@ -238,7 +174,6 @@ export function computeRaceStatus(
 }
 
 export type RaceCoach = RaceCoachRow & { status: RaceStatus }
-export type RaceTeam = RaceTeamRow & { status: RaceStatus }
 
 // Unqualified individuals, closest-to-qualifying first. Anyone who (despite
 // appearing in the "not yet qualified" sheet) already meets both bars is
@@ -246,13 +181,6 @@ export type RaceTeam = RaceTeamRow & { status: RaceStatus }
 export function rankRaceCoaches(rows: RaceCoachRow[]): RaceCoach[] {
   return rows
     .map((r) => ({ ...r, status: computeRaceStatus(r.plansSold, r.amount, INDIVIDUAL_QUALIFICATION) }))
-    .filter((r) => r.status.score < 1)
-    .sort((a, b) => b.status.score - a.status.score)
-}
-
-export function rankRaceTeams(rows: RaceTeamRow[]): RaceTeam[] {
-  return rows
-    .map((r) => ({ ...r, status: computeRaceStatus(r.plansSold, r.amount, LEADER_QUALIFICATION) }))
     .filter((r) => r.status.score < 1)
     .sort((a, b) => b.status.score - a.status.score)
 }

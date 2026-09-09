@@ -7,15 +7,13 @@ import type { RaceStatus } from '@/lib/sales-contest'
 export type RaceLeader = { name: string; sub?: string; status: RaceStatus }
 
 // Motivational "still racing" reveal — shown instead of a celebration when
-// nobody (individual or leader) has qualified yet. No confetti/trophy: this
-// is encouragement, not a win. Self-closes via `onDone` after ~3.5s.
+// nobody has qualified yet. No confetti/trophy: this is encouragement, not a
+// win. Self-closes via `onDone` after ~3.5s.
 export default function RaceReveal({
   leader,
-  kind,
   onDone,
 }: {
   leader: RaceLeader
-  kind: 'individual' | 'leader'
   onDone: () => void
 }) {
   const [leaving, setLeaving] = useState(false)
@@ -29,16 +27,10 @@ export default function RaceReveal({
     }
   }, [onDone])
 
-  const heading = kind === 'individual' ? '🚀 The Race Is On!' : '🏆 The Leadership Race Is On!'
-  const closing =
-    kind === 'individual'
-      ? "You're almost there — keep pushing! All the best! 💪"
-      : "You're close to the qualification mark! Keep pushing & all the best! 🚀"
-
   return (
     <div
       role="dialog"
-      aria-label={heading}
+      aria-label="The Race Is On"
       onClick={onDone}
       className={`fixed inset-0 z-50 flex cursor-pointer items-center justify-center overflow-hidden bg-black/85 px-6 text-center backdrop-blur-sm transition-opacity duration-500 ${
         leaving ? 'opacity-0' : 'opacity-100'
@@ -69,7 +61,7 @@ export default function RaceReveal({
           className="font-brand mt-3 text-xl font-extrabold uppercase tracking-widest text-leanr-yellow sm:text-2xl"
           style={{ textShadow: '0 0 18px rgba(255,237,0,0.5)' }}
         >
-          {heading}
+          🚀 The Race Is On!
         </h2>
 
         <p className="font-brand mt-2 text-2xl font-bold text-white sm:text-3xl">{leader.name}</p>
@@ -79,7 +71,7 @@ export default function RaceReveal({
           {leader.status.needLabel}
         </p>
         <p className="leanr-fade-up mt-3 text-sm italic text-leanr-text-secondary" style={{ animationDelay: '0.6s' }}>
-          {closing}
+          You&apos;re almost there — keep pushing! All the best! 💪
         </p>
       </div>
     </div>

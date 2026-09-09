@@ -111,7 +111,7 @@ export function SparkleRing() {
 // gold/white confetti burst from both edges + the winner's stats fading in.
 // Mounted only when triggered and self-removes via `onDone` after ~4s — never
 // loops or runs in the background. Reused for both the "Weekly Champion"
-// (top individual) and "Top Leader" reveals — `heading` / `incentive` vary.
+// the "Weekly Champion" top individual reveal — `heading` / `incentive` vary.
 export default function WinnerCelebration({
   champion,
   heading = '🏆 Weekly Champion',

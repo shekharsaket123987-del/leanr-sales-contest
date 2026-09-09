@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react'
 
-// Contest window: 10–16 August 2026, IST. Deadline is end-of-day on the 16th.
-const CONTEST_END = new Date('2026-08-16T23:59:59+05:30')
+// Contest window: 8–14 September 2026, IST. Deadline is end-of-day on the 14th.
+const CONTEST_END = new Date('2026-09-14T23:59:59+05:30')
 const LAST_DAY_YEAR = 2026
-const LAST_DAY_MONTH = 8 // August
-const LAST_DAY_DATE = 16
+const LAST_DAY_MONTH = 9 // September
+const LAST_DAY_DATE = 14
 
 // Calendar date (Y/M/D) "now" in IST, independent of the viewer's own
 // timezone — the day-vs-hour mode switch must be based on IST, not local time.
@@ -26,7 +26,7 @@ type CountdownState =
   | { mode: 'hours'; h: number; m: number; s: number }
   | { mode: 'ended' }
 
-// Days 10–15 Aug (IST): whole-day countdown. Day of 16 Aug (IST): switches to
+// Days 8–13 Sep (IST): whole-day countdown. Day of 14 Sep (IST): switches to
 // a live HH:MM:SS countdown to the end-of-day deadline.
 function computeState(now: Date): CountdownState {
   const msLeft = CONTEST_END.getTime() - now.getTime()
