@@ -82,7 +82,7 @@ export function parseContestSummarySheet(values: CellValue[][]): ContestSummary 
 // ---------- Weekly-drive qualification & incentives ----------
 // Business rules given directly by Fitelo (not derived from the sheet).
 // Individual (coach/dietitian) basis only.
-export const INDIVIDUAL_QUALIFICATION = { minPayments: 2, minSales: 25_000 }
+export const INDIVIDUAL_QUALIFICATION = { minPayments: 3, minSales: 25_000 }
 export const INDIVIDUAL_INCENTIVES = [3000, 2500, 2000] // 1st, 2nd, 3rd
 
 function qualifies(
