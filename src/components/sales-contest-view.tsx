@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SalesContestData } from '@/lib/data'
-import type { ContestCoachRow, RaceCoach } from '@/lib/sales-contest'
+import type { ContestCoachRow, ContestTeamRow, RaceCoach, RaceTeam } from '@/lib/sales-contest'
 import {
   CONTEST_LABEL,
   INDIVIDUAL_QUALIFICATION,
+  LEADER_QUALIFICATION,
   incentiveFor,
   qualifiedTopCoaches,
+  qualifiedTopTeams,
   rankRaceCoaches,
+  rankRaceTeams,
 } from '@/lib/sales-contest'
 import { formatINR } from '@/lib/format'
 import { Kpi } from '@/components/ui'
@@ -16,6 +19,7 @@ import ContestCountdown from '@/components/contest-countdown'
 import LiveNewsTicker from '@/components/live-news-ticker'
 import WeeklySalesDriveBanner from '@/components/weekly-sales-drive-banner'
 import TopIndividualsReveal from '@/components/top-individuals-reveal'
+import TopLeaderReveal from '@/components/top-leader-reveal'
 import RaceReveal from '@/components/race-reveal'
 import RaceCard from '@/components/race-card'
 
@@ -31,9 +35,10 @@ const RANK_STYLE = [
 
 type PodiumItem = { name: string; sub: string; right?: { value: string; label: string } }
 
-// Compact top-3 ranked list (poster-style "Individual Wise" card) — one
-// medal row per rank, all three always visible together rather than
-// switched behind a tab.
+// Compact top-3 ranked list (poster-style "Individual Wise" / "Leader Wise"
+// cards) — one medal row per rank, all three always visible together rather
+// than switched behind a tab. `right` is omitted entirely for leaders (no
+// figures shown, per the leader recognition-only display rule).
 function TopThreeList({ items }: { items: PodiumItem[] }) {
   return (
     <ol className="space-y-2.5">
@@ -64,7 +69,7 @@ function TopThreeList({ items }: { items: PodiumItem[] }) {
 }
 
 // "Still in the race" strip — compact, sits below a qualified Top-3 list when
-// some but not all have qualified.
+// some but not all have qualified (dashboard STATE 2/3).
 function StillInRace({ label, items }: { label: string; items: { name: string; needLabel: string }[] }) {
   if (items.length === 0) return null
   return (
@@ -154,11 +159,11 @@ function RankCell({ rank }: { rank: number | null }) {
   return <span className="font-semibold text-zinc-500 dark:text-leanr-text-secondary">#{rank}</span>
 }
 
-// "Overall Performance" is every coach/dietitian with any sales this week —
-// merging the already-qualified (Top Coaches tab) with the still-racing
-// (Raw-Coach tab) into one table, qualified rows first, so the raw data
-// (who's qualified, who isn't, and exactly how much more they need) is all
-// in one simple place.
+// "Overall Performance" is every coach/team with any sales this week —
+// merging the already-qualified (Top Coaches / Top Leader tabs) with the
+// still-racing (Raw-Coach / Raw-Leader tabs) into one table, qualified rows
+// first. Nobody with sales activity is left out just because they haven't
+// crossed the eligibility bar yet.
 type OverallCoachEntry =
   | { kind: 'qualified'; coach: string; team: string; plansSold: number; amount: number; rank: number | null; incentive: number }
   | { kind: 'race'; coach: string; team: string; plansSold: number; amount: number; needLabel: string }
@@ -200,7 +205,7 @@ function OverallCoachTable({ rows }: { rows: OverallCoachEntry[] }) {
             <th className="py-2 pr-4 font-medium">Team</th>
             <th className="py-2 pr-4 text-right font-medium">Plans Sold</th>
             <th className="py-2 pr-4 text-right font-medium">Amount</th>
-            <th className="py-2 text-right font-medium">Qualified? / What's needed</th>
+            <th className="py-2 text-right font-medium">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -221,14 +226,72 @@ function OverallCoachTable({ rows }: { rows: OverallCoachEntry[] }) {
               </td>
               <td className="py-2 text-right font-semibold">
                 {r.kind === 'race' ? (
-                  <span className="whitespace-nowrap text-leanr-yellow">❌ Not qualified — {r.needLabel}</span>
+                  <span className="whitespace-nowrap text-leanr-yellow">{r.needLabel}</span>
                 ) : r.incentive > 0 ? (
-                  <span className="tabular-nums text-leanr-yellow">✅ Qualified — {formatINR(r.incentive)}</span>
+                  <span className="tabular-nums text-leanr-yellow">{formatINR(r.incentive)}</span>
                 ) : (
                   // Qualified (Top Coaches tab = both thresholds already met)
                   // but not Top-3 — "no incentive" isn't "no data".
                   <span className="whitespace-nowrap text-xs text-emerald-600 dark:text-emerald-400">
-                    ✅ Qualified — outside Top 3
+                    ✅ Eligibility Crossed
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+type OverallTeamEntry =
+  | { kind: 'qualified'; team: string; plansSold: number; amount: number; rank: number | null }
+  | { kind: 'race'; team: string; plansSold: number; amount: number; needLabel: string }
+
+function buildOverallTeams(qualified: ContestTeamRow[], race: RaceTeam[]): OverallTeamEntry[] {
+  return [
+    ...qualified.map((t) => ({ kind: 'qualified' as const, team: t.team, plansSold: t.plansSold, amount: t.amount, rank: t.rank })),
+    ...race.map((t) => ({ kind: 'race' as const, team: t.team, plansSold: t.plansSold, amount: t.amount, needLabel: t.status.needLabel })),
+  ]
+}
+
+function OverallTeamTable({ rows }: { rows: OverallTeamEntry[] }) {
+  return (
+    <div className="max-h-[560px] overflow-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-leanr-border-light text-left text-zinc-500 dark:border-leanr-border dark:text-leanr-text-secondary">
+            <th className="py-2 pr-4 font-medium">Rank</th>
+            <th className="py-2 pr-4 font-medium">Team</th>
+            <th className="py-2 pr-4 text-right font-medium">Plans Sold</th>
+            <th className="py-2 pr-4 text-right font-medium">Amount</th>
+            <th className="py-2 text-right font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={`${r.team}-${i}`} className="border-b border-zinc-100 dark:border-leanr-border">
+              <td className="py-2 pr-4">
+                {r.kind === 'qualified' ? (
+                  <RankCell rank={r.rank} />
+                ) : (
+                  <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                )}
+              </td>
+              <td className="py-2 pr-4 font-medium text-zinc-900 dark:text-white">{r.team}</td>
+              <td className="py-2 pr-4 text-right tabular-nums">{r.plansSold.toLocaleString('en-IN')}</td>
+              <td className="py-2 pr-4 text-right font-semibold tabular-nums text-zinc-900 dark:text-white">
+                {formatINR(r.amount)}
+              </td>
+              <td className="py-2 text-right">
+                {/* No incentive/revenue for leaders (recognition only) — just
+                    eligibility status, per the leader display rule. */}
+                {r.kind === 'race' ? (
+                  <span className="whitespace-nowrap text-xs font-semibold text-leanr-yellow">{r.needLabel}</span>
+                ) : (
+                  <span className="whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    ✅ Eligibility Crossed
                   </span>
                 )}
               </td>
@@ -247,48 +310,60 @@ const FOOTER_CHIPS = [
   { icon: '🏆', label: 'Be a LeanR champion' },
 ]
 
-type Phase = 'dashboard' | 'individual'
+type Phase = 'dashboard' | 'individual' | 'leader'
 
 export default function SalesContestView({ data }: { data: SalesContestData }) {
+  const [table, setTable] = useState<'coach' | 'team'>('coach')
   const [search, setSearch] = useState('')
   const [phase, setPhase] = useState<Phase>('dashboard')
+  const nextPhase = useRef<'individual' | 'leader'>('individual')
 
-  // Qualification-gated winners — these drive the mini leaderboard, the
-  // incentive table, and the periodic reveal animation, per the
+  // Qualification-gated winners — these drive the mini leaderboards, the
+  // incentive table, and the periodic reveal animations, per the
   // weekly-drive rules (minimum payments + minimum sales; see
-  // src/lib/sales-contest.ts). Individual basis only.
+  // src/lib/sales-contest.ts). Individuals show incentive earned; leaders
+  // show recognition only — no figures at all.
   const qualifiedCoaches = useMemo(() => qualifiedTopCoaches(data.coaches, 3), [data.coaches])
+  const qualifiedTeams = useMemo(() => qualifiedTopTeams(data.teams, 3), [data.teams])
   const incentiveOf = useMemo(
     () => (r: ContestCoachRow) => incentiveFor(r, qualifiedCoaches),
     [qualifiedCoaches],
   )
 
   // "Race to qualification" — closest-first, for whenever the qualified
-  // list above is thin or empty. Never leaves the dashboard with nothing
+  // lists above are thin or empty. Never leaves the dashboard with nothing
   // to show.
   const raceCoaches = useMemo(() => rankRaceCoaches(data.raceCoaches), [data.raceCoaches])
+  const raceTeams = useMemo(() => rankRaceTeams(data.raceTeams), [data.raceTeams])
 
-  // Periodic reveal: idle on the dashboard for IDLE_MS, then show either a
-  // Top-3 Individual celebration (qualifiers exist) or a "race is on"
-  // motivational reveal (nobody's qualified yet) — back to idle, repeat, for
-  // as long as the page stays open.
+  // Periodic reveal rotation: idle on the dashboard for IDLE_MS, then show
+  // either a Top-3 Individual celebration (qualifiers exist) or a "race is
+  // on" motivational reveal (nobody's qualified yet) — same for leaders —
+  // back to idle, repeat, alternating for as long as the page stays open.
   useEffect(() => {
     if (phase !== 'dashboard') return
-    const hasSomethingToShow = qualifiedCoaches.length > 0 || raceCoaches.length > 0
-    if (!hasSomethingToShow) return
-    const t = setTimeout(() => setPhase('individual'), IDLE_MS)
+    const hasIndividual = qualifiedCoaches.length > 0 || raceCoaches.length > 0
+    const hasLeader = qualifiedTeams.length > 0 || raceTeams.length > 0
+    if (!hasIndividual && !hasLeader) return
+    const t = setTimeout(() => {
+      let candidate = nextPhase.current
+      if (candidate === 'individual' && !hasIndividual) candidate = 'leader'
+      else if (candidate === 'leader' && !hasLeader) candidate = 'individual'
+      nextPhase.current = candidate === 'individual' ? 'leader' : 'individual'
+      setPhase(candidate)
+    }, IDLE_MS)
     return () => clearTimeout(t)
-  }, [phase, qualifiedCoaches.length, raceCoaches.length])
+  }, [phase, qualifiedCoaches.length, qualifiedTeams.length, raceCoaches.length, raceTeams.length])
 
   // "Overall Performance" merges everyone with sales activity this week —
-  // already-qualified (Top Coaches) plus still-racing (Raw-Coach) — so
-  // nobody drops off the full table just for not having crossed the
-  // eligibility bar yet, and it's the one place to see raw numbers for
-  // everybody.
+  // already-qualified (Top Coaches/Top Leader) plus still-racing (Raw-Coach/
+  // Raw-Leader) — so nobody drops off the full table just for not having
+  // crossed the eligibility bar yet.
   const overallCoaches = useMemo(
     () => buildOverallCoaches(data.coaches, incentiveOf, raceCoaches),
     [data.coaches, incentiveOf, raceCoaches],
   )
+  const overallTeams = useMemo(() => buildOverallTeams(data.teams, raceTeams), [data.teams, raceTeams])
 
   const filteredOverallCoaches = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -309,7 +384,23 @@ export default function SalesContestView({ data }: { data: SalesContestData }) {
         ) : (
           raceCoaches.length > 0 && (
             <RaceReveal
+              kind="individual"
               leader={{ name: raceCoaches[0].coach, sub: raceCoaches[0].team, status: raceCoaches[0].status }}
+              onDone={() => setPhase('dashboard')}
+            />
+          )
+        ))}
+      {phase === 'leader' &&
+        (qualifiedTeams.length > 0 ? (
+          <TopLeaderReveal
+            leaders={qualifiedTeams.map((t) => ({ name: t.team }))}
+            onDone={() => setPhase('dashboard')}
+          />
+        ) : (
+          raceTeams.length > 0 && (
+            <RaceReveal
+              kind="leader"
+              leader={{ name: raceTeams[0].team, status: raceTeams[0].status }}
               onDone={() => setPhase('dashboard')}
             />
           )
@@ -350,15 +441,15 @@ export default function SalesContestView({ data }: { data: SalesContestData }) {
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label="Total plans sold" value={data.summary.plans.toLocaleString('en-IN')} />
         <Kpi label="Total revenue" value={formatINR(data.summary.revenue)} />
         <Kpi label="Coaches competing" value={String(data.coaches.length + data.raceCoaches.length)} />
+        <Kpi label="Teams competing" value={String(data.teams.length + data.raceTeams.length)} />
       </div>
 
-      {/* Individual Wise / Race to qualification — side by side with a
-          champion spotlight. Simple, individual-basis only. */}
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {/* Individual / Leader / Champion — side by side, always visible. */}
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <section className="rounded-xl border border-leanr-border-light bg-white p-4 dark:border-leanr-border dark:bg-leanr-card">
           <h2 className="font-brand mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
             {qualifiedCoaches.length > 0 ? (
@@ -407,7 +498,46 @@ export default function SalesContestView({ data }: { data: SalesContestData }) {
 
         <section className="rounded-xl border border-leanr-border-light bg-white p-4 dark:border-leanr-border dark:bg-leanr-card">
           <h2 className="font-brand mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
-            Top Performer Spotlight
+            {qualifiedTeams.length > 0 ? (
+              <>
+                Leader Wise <span className="font-normal normal-case text-zinc-400 dark:text-leanr-text-secondary">(Team)</span>
+              </>
+            ) : (
+              '🏆 Race to Leadership'
+            )}
+          </h2>
+          {qualifiedTeams.length > 0 ? (
+            <>
+              <TopThreeList items={qualifiedTeams.map((t) => ({ name: t.team, sub: '' }))} />
+              <StillInRace
+                label="Unqualified teams still racing for top leader"
+                items={raceTeams.slice(0, 3).map((t) => ({ name: t.team, needLabel: t.status.needLabel }))}
+              />
+            </>
+          ) : raceTeams.length > 0 ? (
+            <div className="space-y-3">
+              {raceTeams.slice(0, 3).map((t) => (
+                <RaceCard
+                  key={t.team}
+                  name={t.team}
+                  plansSold={t.plansSold}
+                  amount={t.amount}
+                  minPlans={LEADER_QUALIFICATION.minPayments}
+                  minSales={LEADER_QUALIFICATION.minSales}
+                  status={t.status}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-zinc-400 dark:text-leanr-text-secondary">
+              Waiting for this week&apos;s first sale…
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-leanr-border-light bg-white p-4 dark:border-leanr-border dark:bg-leanr-card">
+          <h2 className="font-brand mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
+            Overall Performance
           </h2>
           <ChampionSpotlight
             champion={
@@ -420,34 +550,60 @@ export default function SalesContestView({ data }: { data: SalesContestData }) {
         </section>
       </div>
 
-      {/* Full roster — every coach with sales this week, qualified (Top
-          Coaches) and still-racing (Raw-Coach) together, so it's simple to
-          see who's qualified, who isn't, and exactly how much more they
-          need. This is the raw data view. */}
+      {/* Full roster — every coach/team with sales this week, qualified
+          (Top Coaches/Top Leader) and still-racing (Raw-Coach/Raw-Leader)
+          together. Nobody drops off just for not having qualified yet. */}
       <section className="mt-4 rounded-xl border border-leanr-border-light bg-white p-4 dark:border-leanr-border dark:bg-leanr-card">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-brand text-sm font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
             Overall Performance{' '}
             <span className="font-normal normal-case text-zinc-400 dark:text-leanr-text-secondary">
-              — every coach & dietitian, raw data
+              — {table === 'coach' ? 'all coaches & dietitians' : 'all teams'}
             </span>
           </h2>
+          <div className="flex items-center gap-2">
+            {(['coach', 'team'] as const).map((k) => {
+              const on = table === k
+              return (
+                <button
+                  key={k}
+                  onClick={() => setTable(k)}
+                  aria-pressed={on}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    on
+                      ? 'bg-leanr-yellow text-leanr-black font-semibold'
+                      : 'border border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-leanr-border dark:text-zinc-300 dark:hover:bg-leanr-graphite'
+                  }`}
+                >
+                  {k === 'coach' ? 'All coaches' : 'All teams'}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        <div className="mb-3">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search coach or team…"
-            className="w-full max-w-sm rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-leanr-yellow focus:outline-none dark:border-leanr-border dark:bg-leanr-graphite dark:text-white"
-          />
-        </div>
+        {table === 'coach' && (
+          <div className="mb-3">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search coach or team…"
+              className="w-full max-w-sm rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-leanr-yellow focus:outline-none dark:border-leanr-border dark:bg-leanr-graphite dark:text-white"
+            />
+          </div>
+        )}
 
-        {filteredOverallCoaches.length > 0 ? (
-          <OverallCoachTable rows={filteredOverallCoaches} />
+        {table === 'coach' ? (
+          filteredOverallCoaches.length > 0 ? (
+            <OverallCoachTable rows={filteredOverallCoaches} />
+          ) : (
+            <p className="py-6 text-center text-sm text-zinc-400 dark:text-leanr-text-secondary">No coaches found.</p>
+          )
+        ) : overallTeams.length > 0 ? (
+          <OverallTeamTable rows={overallTeams} />
         ) : (
-          <p className="py-6 text-center text-sm text-zinc-400 dark:text-leanr-text-secondary">No coaches found.</p>
+          <p className="py-6 text-center text-sm text-zinc-400 dark:text-leanr-text-secondary">No teams found.</p>
         )}
       </section>
 
@@ -468,8 +624,9 @@ export default function SalesContestView({ data }: { data: SalesContestData }) {
       </p>
 
       <p className="mt-3 text-xs text-zinc-400 dark:text-leanr-text-secondary">
-        Source: <span className="font-medium">Top Coaches</span> and <span className="font-medium">Raw-Coach</span>{' '}
-        tabs — updated live from the contest sheet on every page load.
+        Source: <span className="font-medium">Top Coaches</span>, <span className="font-medium">Top Leader</span>,{' '}
+        <span className="font-medium">Raw-Coach</span> and <span className="font-medium">Raw-Leader</span> tabs —
+        updated live from the contest sheet on every page load.
       </p>
     </>
   )

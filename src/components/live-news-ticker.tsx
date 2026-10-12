@@ -23,7 +23,7 @@ export default function LiveNewsTicker() {
       <Sep />
       <span className="font-brand font-extrabold text-leanr-yellow">🚀 LEANR WEEKLY SALES DRIVE</span>
       <Sep />
-      <span className="font-bold text-white">8 SEPTEMBER – 14 SEPTEMBER</span>
+      <span className="font-bold text-white">10 OCTOBER – 16 OCTOBER</span>
       <Sep />
     </>
   )
