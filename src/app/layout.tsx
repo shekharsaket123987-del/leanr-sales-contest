@@ -9,7 +9,7 @@ const rajdhani = Rajdhani({ variable: '--font-rajdhani', subsets: ['latin'], wei
 
 export const metadata: Metadata = {
   title: 'Sales Contest — Fitelo LeanR',
-  description: 'Live leaderboard for the 10–16 October coach, dietitian & leader sales contest.',
+  description: 'Live leaderboard for the 23–25 October 72-Hour Sales Sprint Challenge — coaches, dietitians & team leaders.',
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

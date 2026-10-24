@@ -29,7 +29,7 @@ export default function WeeklySalesDriveBanner() {
             <span className="text-4xl" aria-hidden="true">🚀</span>
             <div>
               <h2 className="font-brand text-2xl font-extrabold uppercase tracking-wide text-leanr-yellow sm:text-3xl" style={{ textShadow: '0 0 18px rgba(255,237,0,0.4)' }}>
-                Weekly Sales Drive
+                72-Hour Sales Sprint Challenge
               </h2>
               <p className="text-sm font-semibold text-white">{CONTEST_LABEL.toUpperCase()}</p>
             </div>
@@ -40,7 +40,7 @@ export default function WeeklySalesDriveBanner() {
 
           <div className="mt-4">
             <div className="text-xs font-bold uppercase tracking-widest text-leanr-text-secondary">
-              Qualification Criteria <span className="text-leanr-yellow">— Weekly Top Coaches (Individual Basis)</span>
+              Qualification Criteria <span className="text-leanr-yellow">— Top Coaches (Individual Basis)</span>
             </div>
             <div className="mt-1.5 flex flex-wrap gap-2">
               <span className="rounded-full border border-leanr-yellow/40 bg-leanr-yellow/10 px-3 py-1 text-xs font-semibold text-leanr-yellow">
@@ -70,6 +70,7 @@ export default function WeeklySalesDriveBanner() {
               >
                 <div className="text-[11px] font-medium text-zinc-400">{MEDALS[i]}</div>
                 <div className="font-brand mt-0.5 text-lg font-extrabold text-white sm:text-xl">{formatINR(amt)}</div>
+                <div className="text-[9px] font-bold uppercase tracking-wide text-leanr-yellow/80">Extra</div>
               </div>
             ))}
           </div>

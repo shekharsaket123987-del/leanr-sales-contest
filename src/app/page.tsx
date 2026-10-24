@@ -20,8 +20,8 @@ export default async function SalesContestPage() {
         {empty ? (
           <>
             <PageHeader
-              title="Weekly Top Performers"
-              subtitle="10–16 October · Live leaderboard for coaches, dietitians & teams"
+              title="72-Hour Sales Sprint Challenge"
+              subtitle="23–25 October · Live leaderboard for coaches, dietitians & teams"
             />
             <Panel title="No contest data yet">
               <p className="text-sm text-zinc-500 dark:text-leanr-text-secondary">

@@ -1,6 +1,7 @@
-// Parser + types for the "10th–16th October" sales-contest spreadsheet — a
-// separate sheet (SHEET_CONTEST_ID) from the main LeanR sheet, dedicated to a
-// week-long coach/dietitian sales contest. Five tabs are read live:
+// Parser + types for the "23rd–25th October" sales-contest spreadsheet — a
+// separate sheet (SHEET_CONTEST_ID) from the main LeanR sheet, dedicated to
+// the 72-Hour Sales Sprint Challenge (coach/dietitian + team leader). Five
+// tabs are read live:
 //
 //   'Top Coaches' — one row per already-qualified coach/dietitian, ranked.
 //     A Team | B Coach/Dietitian | C Plan Sold | D Payment Amount | ... | I Rank
@@ -23,7 +24,7 @@
 import type { CellValue } from '@/lib/google/sheets'
 
 export const CONTEST_SPREADSHEET_ID = process.env.SHEET_CONTEST_ID ?? ''
-export const CONTEST_LABEL = '10–16 October'
+export const CONTEST_LABEL = '23–25 October'
 
 export type ContestCoachRow = {
   team: string
@@ -113,10 +114,10 @@ export function parseContestSummarySheet(values: CellValue[][]): ContestSummary 
 // coach/team, not a separate transaction count, so plansSold stands in for
 // payments here. If Fitelo tracks payments as a number distinct from plans
 // sold, point this at that column instead.
-export const INDIVIDUAL_QUALIFICATION = { minPayments: 2, minSales: 30_000 }
-export const LEADER_QUALIFICATION = { minPayments: 6, minSales: 70_000 }
-export const INDIVIDUAL_INCENTIVES = [3000, 2000, 1500] // 1st, 2nd, 3rd
-export const LEADER_INCENTIVE = 3000
+export const INDIVIDUAL_QUALIFICATION = { minPayments: 2, minSales: 20_000 }
+export const LEADER_QUALIFICATION = { minPayments: 4, minSales: 50_000 }
+export const INDIVIDUAL_INCENTIVES = [2000, 1500, 1000] // 1st, 2nd, 3rd
+export const LEADER_INCENTIVE = 2000
 
 function qualifies(
   r: { plansSold: number; amount: number },

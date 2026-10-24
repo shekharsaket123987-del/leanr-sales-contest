@@ -21,9 +21,9 @@ export default function LiveNewsTicker() {
         <span className="font-extrabold text-white">LIVE</span>
       </span>
       <Sep />
-      <span className="font-brand font-extrabold text-leanr-yellow">🚀 LEANR WEEKLY SALES DRIVE</span>
+      <span className="font-brand font-extrabold text-leanr-yellow">🚀 LEANR 72-HOUR SALES SPRINT CHALLENGE</span>
       <Sep />
-      <span className="font-bold text-white">10 OCTOBER – 16 OCTOBER</span>
+      <span className="font-bold text-white">23 OCTOBER – 25 OCTOBER</span>
       <Sep />
     </>
   )

@@ -76,7 +76,7 @@ export default function TopIndividualsReveal({
   return (
     <div
       role="dialog"
-      aria-label="Weekly Top 3 Individual Performers"
+      aria-label="Top 3 Individual Performers"
       onClick={onDone}
       className={`fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center overflow-hidden bg-black/90 px-6 text-center backdrop-blur-sm transition-opacity duration-500 ${
         step === 'leaving' ? 'opacity-0' : 'opacity-100'
@@ -108,7 +108,7 @@ export default function TopIndividualsReveal({
           className="font-brand mt-1 text-xl font-extrabold uppercase tracking-widest text-leanr-yellow sm:text-2xl"
           style={{ textShadow: '0 0 20px rgba(255,237,0,0.5)' }}
         >
-          🏆 Weekly Top 3 Individual Performers
+          🏆 Top 3 Individual Performers
         </h2>
         {step === 'intro' && <p className="mt-4 text-sm text-zinc-300">🚀 Counting down the podium…</p>}
         {firstVisible && (
@@ -116,7 +116,7 @@ export default function TopIndividualsReveal({
             className="leanr-fade-up mt-3 font-brand text-sm font-extrabold uppercase tracking-[0.25em] text-white"
             style={{ animationDelay: '0.2s' }}
           >
-            🏆 Weekly Champion
+            🏆 Sprint Champion
           </p>
         )}
       </div>

@@ -409,7 +409,7 @@ export default function SalesContestView({ data }: { data: SalesContestData }) {
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-brand text-2xl font-bold tracking-wide text-zinc-900 dark:text-white">
-            Weekly Top Performers
+            72-Hour Sales Sprint Challenge
           </h1>
           <p className="mt-0.5 text-sm text-zinc-500 dark:text-leanr-text-secondary">
             Celebrating consistency. Recognizing excellence. Building the LeanR legacy together!
